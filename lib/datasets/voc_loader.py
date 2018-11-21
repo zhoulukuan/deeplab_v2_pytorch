@@ -6,7 +6,6 @@ import math
 
 from torch.utils.data import Dataset
 
-from utils.tools import compute_outsize
 
 class VOCDataset(Dataset):
     def __init__(self, txt, cfg, num_classes):
@@ -22,8 +21,8 @@ class VOCDataset(Dataset):
         origin_img, origin_label = self.get_example(item)
         mean = np.array([104.00698793, 116.66876762, 122.67891434]).reshape(1, 1, 3)
         img = cv2.resize(origin_img - mean, tuple(self.cfg.TRAIN.INPUT_SIZE)).astype(float)
-        h, w = compute_outsize(img)
-        label = cv2.resize(origin_label, (h, w), interpolation=cv2.INTER_NEAREST).astype(float)
+        label = cv2.resize(origin_label, tuple(self.cfg.TRAIN.INPUT_SIZE), interpolation=cv2.INTER_NEAREST).astype(float)
+        # label = origin_label
         return img, label
 
     def read_image_label_path(self, txt):

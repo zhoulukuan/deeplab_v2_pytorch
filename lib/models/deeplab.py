@@ -56,8 +56,28 @@ class DeepLab(nn.Module):
         # Fix blocks
         # for p in self.ResNet_base[i].parameters(): p.requires_grad = False
 
-    def forward(self, *input):
-        pass
+    def forward(self, input, input_75, input_50):
+        input_size = input.size()
+        h, w = input.size()[2:]
+
+        out = []
+        x = self.ResNet_base(input)
+        x = self.Pred_layer(x)
+        out.append(x)
+        interp = nn.UpsamplingBilinear2d(size=(x.size()[2], x.size()[3]))
+        fuse = x
+
+        x = self.ResNet_base(input_75)
+        x = self.Pred_layer(x)
+        out.append(x)
+        fuse = torch.max(fuse, interp(x))
+
+        x = self.ResNet_base(input_50)
+        x = self.Pred_layer(x)
+        out.append(x)
+        out.append(torch.max(fuse, interp(x)))
+
+        return out
 
     def _init_weights(self):
         def normal_init(m, mean, stddev, truncated=False):

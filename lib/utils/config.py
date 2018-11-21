@@ -34,7 +34,7 @@ __C.TRAIN.WEIGHT_DECAY = 0.0005
 # Max iters
 __C.TRAIN.MAX_ITERS = 20000
 # Mini batch size for training
-__C.TRAIN.BATCH_SIZE = 20
+__C.TRAIN.BATCH_SIZE = 10
 # If use learning rate policy
 __C.TRAIN.IF_POLY_POLICY = True
 # if true
@@ -47,7 +47,7 @@ __C.TRAIN.IF_MSC = True
 __C.TRAIN.FIXED_SCALES = [0.5, 0.75, 1]
 # Data augmentation
 __C.TRAIN.IF_AUG = True
-__C.TRAIN.SCALES = [0.5, 1.5]
+__C.TRAIN.SCALES = [0.5, 1.3]
 # Data input size
 __C.TRAIN.INPUT_SIZE = [321, 321]
 # Whether to initialize the weights with truncated normal distribution
