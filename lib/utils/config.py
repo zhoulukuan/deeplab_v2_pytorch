@@ -47,7 +47,7 @@ __C.TRAIN.IF_MSC = True
 __C.TRAIN.FIXED_SCALES = [0.5, 0.75, 1]
 # Data augmentation
 __C.TRAIN.IF_AUG = True
-__C.TRAIN.SCALES = [0.5, 1.3]
+__C.TRAIN.SCALES = [1.49, 1.5]
 # Data input size
 __C.TRAIN.INPUT_SIZE = [321, 321]
 # Whether to initialize the weights with truncated normal distribution

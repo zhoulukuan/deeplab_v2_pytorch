@@ -8,11 +8,12 @@ from torch.utils.data import Dataset
 
 
 class VOCDataset(Dataset):
-    def __init__(self, txt, cfg, num_classes):
+    def __init__(self, txt, cfg, num_classes, mode):
         self.cfg = cfg
         self.data_path = cfg.VOC_DATA
         self.num_classes = num_classes
         self.data_list = self.read_image_label_path(txt)
+        self.mode = mode
 
     def __len__(self):
         return len(self.data_list)
@@ -20,10 +21,13 @@ class VOCDataset(Dataset):
     def __getitem__(self, item):
         origin_img, origin_label = self.get_example(item)
         mean = np.array([104.00698793, 116.66876762, 122.67891434]).reshape(1, 1, 3)
-        img = cv2.resize(origin_img - mean, tuple(self.cfg.TRAIN.INPUT_SIZE)).astype(float)
-        label = cv2.resize(origin_label, tuple(self.cfg.TRAIN.INPUT_SIZE), interpolation=cv2.INTER_NEAREST).astype(float)
-        # label = origin_label
-        return img, label
+        if self.mode == 'train':
+            img = cv2.resize(origin_img - mean, tuple(self.cfg.TRAIN.INPUT_SIZE)).astype(float)
+            label = cv2.resize(origin_label, tuple(self.cfg.TRAIN.INPUT_SIZE), interpolation=cv2.INTER_NEAREST).astype(float)
+            # label = origin_label
+            return img, label
+        elif self.mode == 'val':
+            return origin_img, origin_label
 
     def read_image_label_path(self, txt):
         f = open(txt, "r")

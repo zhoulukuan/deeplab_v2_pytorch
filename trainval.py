@@ -3,11 +3,12 @@ import os
 import argparse
 import pprint
 import datetime
-import re
+import numpy as np
 
 import torch
 from torch.utils.data import DataLoader
 from torch import nn
+
 
 import _init_path
 from utils.config import cfg, cfg_from_file, cfg_from_list
@@ -15,7 +16,7 @@ from utils.tools import random_scale_and_msc, msc_label, adjust_learning_rate
 from datasets.voc_loader import VOCDataset
 from models.deeplab import DeepLab
 from models.losses import loss_calc
-
+from test import eval
 
 
 def parse_args():
@@ -31,10 +32,10 @@ def parse_args():
                     default='res101', type=str)
     parser.add_argument('--disp_interval', dest='disp_interval',
                       help='number of iterations to display',
-                      default=10, type=int)
+                      default=20, type=int)
     parser.add_argument('--checkpoint_interval', dest='checkpoint_interval',
-                      help='number of iterations to display',
-                      default=10, type=int)
+                      help='number of save model and evaluate it',
+                      default=2000, type=int)
     parser.add_argument('--save_dir', dest='save_dir',
                       help='directory to save models', default="models",
                       type=str)
@@ -47,6 +48,9 @@ def parse_args():
     parser.add_argument('--use_tfboard', dest='use_tfboard',
                       help='if use tensorboardX', default=True,
                       type=bool)
+    parser.add_argument('--eval', dest='eval',
+                        help='if evaluate model', default=True,
+                        type=bool)
     args = parser.parse_args()
     return args
 
@@ -69,13 +73,12 @@ if __name__ == "__main__":
 
     if args.dataset == 'pascal_voc':
         num_classes = 21
-        dataset = VOCDataset(osp.join(cfg.DATA_DIR, 'train.txt') ,cfg, num_classes)
-        valset = VOCDataset(osp.join(cfg.DATA_DIR, 'val.txt'), cfg, num_classes)
+        dataset = VOCDataset(osp.join(cfg.DATA_DIR, 'train.txt') ,cfg, num_classes, 'train')
+        valset = VOCDataset(osp.join(cfg.DATA_DIR, 'val.txt'), cfg, num_classes, 'val')
 
     trainloader = DataLoader(dataset=dataset, batch_size=cfg.TRAIN.BATCH_SIZE,
                              shuffle=True)
-    valloader = DataLoader(dataset=valset, batch_size=1,
-                           shuffle=False)
+    valloader = DataLoader(dataset=valset, batch_size=1, shuffle=False)
 
     net = DeepLab(num_classes, pretrained=False)
     net.create_architecture()
@@ -159,6 +162,10 @@ if __name__ == "__main__":
                         'lr': lr
                         }, save_path)
             print("save model: {}".format(save_path))
+            # if args.eval:
+            #     hist = np.zeros((num_classes, num_classes))
+            #     eval(val_loader, net, hist)
+
 
 
 

@@ -98,6 +98,4 @@ class DeepLab(nn.Module):
         self._init_module()
         self._init_weights()
 
-    def train(self):
-        pass
 
