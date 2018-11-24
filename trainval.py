@@ -4,6 +4,7 @@ import argparse
 import pprint
 import datetime
 import numpy as np
+import shutil
 
 import torch
 from torch.utils.data import DataLoader
@@ -35,7 +36,7 @@ def parse_args():
                       default=20, type=int)
     parser.add_argument('--checkpoint_interval', dest='checkpoint_interval',
                       help='number of save model and evaluate it',
-                      default=2000, type=int)
+                      default=4000, type=int)
     parser.add_argument('--save_dir', dest='save_dir',
                       help='directory to save models', default="models",
                       type=str)
@@ -51,6 +52,9 @@ def parse_args():
     parser.add_argument('--eval', dest='eval',
                         help='if evaluate model', default=True,
                         type=bool)
+    parser.add_argument('--set', dest='set_cfgs',
+                        help='set config keys', default=None,
+                        nargs=argparse.REMAINDER)
     args = parser.parse_args()
     return args
 
@@ -63,6 +67,8 @@ if __name__ == "__main__":
     args.cfg_file = "cfgs/{}.yml".format(args.net)
     if args.cfg_file is not None:
         cfg_from_file(args.cfg_file)
+    if args.set_cfgs is not None:
+        cfg_from_list(args.set_cfgs)
 
     print('Using config:')
     pprint.pprint(cfg)
@@ -80,19 +86,33 @@ if __name__ == "__main__":
                              shuffle=True)
     valloader = DataLoader(dataset=valset, batch_size=1, shuffle=False)
 
-    net = DeepLab(num_classes, pretrained=False)
+    net = DeepLab(num_classes, pretrained=True)
     net.create_architecture()
+
+    # Load pre-trained model
+    # if cfg.TRAIN.PRETRAINED_MODEL:
+    #     print("Loading pretrained weights from %s" % (cfg.TRAIN.PRETRAINED_MODEL))
+    #     state_dict = torch.load(cfg.TRAIN.PRETRAINED_MODEL)
+    #     temp = OrderedDict()
+    #     for k, v in state_dict.items():
+    #         if 'conv2d_list' in k:
+    #             new_key = 'Pred_layer' + k[13:]
+    #             temp[new_key] = v
+    #         else:
+    #             new_key = 'ResNet_base' + k[6:]
+    #     net.load_state_dict({k: v for k, v in temp.items() if k in net.state_dict()})
 
     lr = cfg.TRAIN.LEARNING_RATE
     weight_decay = cfg.TRAIN.WEIGHT_DECAY
     momentum = cfg.TRAIN.MOMENTUM
+    iter_size = cfg.TRAIN.ITER_SIZE
+
 
     ### Setting learning rate
     params = []
     for key, value in dict(net.named_parameters()).items():
         if value.requires_grad:
             if 'ResNet_base' in key:
-                # I don't set bias weight decay to zero
                 params += [{'params': [value], 'lr': lr}]
             elif 'Pred_layer' in key:
                 params += [{'params': [value], 'lr': 10 * lr}]
@@ -102,8 +122,10 @@ if __name__ == "__main__":
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(params, momentum=momentum, weight_decay=weight_decay)
     if cfg.CUDA: net.cuda()
+    net.float()
+    net.eval()
 
-    data_iter = iter(trainloader)
+    data_iter = trainloader.__iter__()
     star_iter = 0
     ### If resume training
     if args.resume:
@@ -118,12 +140,19 @@ if __name__ == "__main__":
     ### Use tensorboardX
     if args.use_tfboard:
         from tensorboardX import SummaryWriter
-        logger = SummaryWriter("logs")
+        logger = SummaryWriter(args.log_dir)
+        shutil.rmtree(args.log_dir)
+        os.mkdir(args.log_dir)
 
+    # for i in range(): _, _ = data_iter.next()
     ### Begin Training
     for iter in range(star_iter, cfg.TRAIN.MAX_ITERS+1):
-        lr = adjust_learning_rate(optimizer, iter, lr)
-        image, label = data_iter.next()
+        try:
+            image, label = data_iter.next()
+        except StopIteration:
+            del data_iter
+            data_iter = trainloader.__iter__()
+            image, label = data_iter.next()
         img, img_75, img_50 = random_scale_and_msc(image.numpy(), label.numpy(), cfg.TRAIN.FIXED_SCALES, cfg.TRAIN.SCALES)
         if cfg.CUDA:
             img, img_75, img_50 = img.cuda().float(), img_75.cuda().float(), img_50.cuda().float()
@@ -139,20 +168,23 @@ if __name__ == "__main__":
             label, label_75, label_50 = label.long(), label_75.long(), label_50.long()
 
         loss = loss_calc(out, [label, label_75, label_50])
-
-        optimizer.zero_grad()
+        loss = loss / iter_size
         loss.backward()
-        optimizer.step()
+
+        if iter % iter_size == 0:
+            optimizer.step()
+            lr = adjust_learning_rate(optimizer, iter, lr)
+            optimizer.zero_grad()
 
         if iter % args.disp_interval == 0:
             now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            print(("Time:%s  [iter %4d/%4d]  loss: %.4f,  lr: %.2e" % (now, iter, cfg.TRAIN.MAX_ITERS, loss.item(), lr)))
+            print(("Time:%s  [iter %4d/%4d]  loss: %.4f,  lr: %.6e" % (now, iter, cfg.TRAIN.MAX_ITERS, loss.item() * iter_size, lr)))
             if args.use_tfboard:
                 info = {
                     'loss': loss.item(),
                     'lr': lr
                 }
-                logger.add_scalars("logs/loss_lr", info, iter)
+                logger.add_scalars("loss_lr", info, iter)
 
         if iter % args.checkpoint_interval == 0 or iter == cfg.TRAIN.MAX_ITERS:
             save_path = osp.join(args.save_dir, 'VOC12_'+str(iter)+'.pth')

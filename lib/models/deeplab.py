@@ -1,10 +1,12 @@
-from collections import OrderedDict
 
 from torch import nn
 import torch
 
 from models.resnet import *
 from utils.config import cfg
+
+from collections import OrderedDict
+
 
 class Classifier(nn.Module):
     def __init__(self, dilation_series, padding_series, num_classes):
@@ -22,10 +24,10 @@ class Classifier(nn.Module):
 
 class DeepLab(nn.Module):
     """"Deeplab for semantic segmentation """
-    def __init__(self, num_classes, pretrained=True):
+    def __init__(self, num_classes, pretrained):
         super(DeepLab, self).__init__()
         self.num_classes = num_classes
-        self.pretrained = True
+        self.pretrained = pretrained
         self.pretrained_model = cfg.TRAIN.PRETRAINED_MODEL
 
     def _init_module(self):

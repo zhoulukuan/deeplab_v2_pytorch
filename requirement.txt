@@ -1,0 +1,5 @@
+tensorboardX
+tensorflow
+opencv-python
+numpy
+easydict

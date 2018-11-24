@@ -3,6 +3,7 @@ import random
 import cv2
 import numpy as np
 import math
+import random
 
 from torch.utils.data import Dataset
 
@@ -25,9 +26,11 @@ class VOCDataset(Dataset):
             img = cv2.resize(origin_img - mean, tuple(self.cfg.TRAIN.INPUT_SIZE)).astype(float)
             label = cv2.resize(origin_label, tuple(self.cfg.TRAIN.INPUT_SIZE), interpolation=cv2.INTER_NEAREST).astype(float)
             # label = origin_label
+            p = random.uniform(0, 1)
+            img, label = self.flip(img, label, p)
             return img, label
         elif self.mode == 'val':
-            return origin_img, origin_label
+            return origin_img.astype(float) - mean, origin_label.astype(float)
 
     def read_image_label_path(self, txt):
         f = open(txt, "r")
@@ -49,6 +52,12 @@ class VOCDataset(Dataset):
         label[label == 255] = 0
 
         return img, label
+
+    def flip(self, I, G, p):
+        if p > 0.5:
+            return np.fliplr(I).copy(), np.fliplr(G).copy()
+        else:
+            return I, G
 
     # def process_data(self, img, label):
     #     """Returns the i-th example after processing
