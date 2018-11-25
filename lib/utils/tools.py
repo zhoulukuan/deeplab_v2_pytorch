@@ -23,8 +23,6 @@ def random_scale_and_msc(image, lbl, fixed_scales, scales, aug=True):
     img_50 = [cv2.resize(temp, (int(w * factor * fixed_scales[0]), int(h * factor * fixed_scales[0])))
            for temp in image[:]]
 
-
-
     # change (B, H, W, C) to (B, C, H, W)
     img = torch.from_numpy(np.array(img).transpose(0, 3, 1, 2))
     img_75 = torch.from_numpy(np.array(img_75).transpose(0, 3, 1, 2))
@@ -35,6 +33,8 @@ def random_scale_and_msc(image, lbl, fixed_scales, scales, aug=True):
 
 
 def msc_label(lbl, s1, s2, s3):
+    lbl[lbl == 255] = 0
+
     label = [cv2.resize(temp, (s1[3], s1[2]), interpolation=cv2.INTER_NEAREST) for temp in lbl[:]]
     label = torch.from_numpy(np.array(label))
 
@@ -56,13 +56,18 @@ def adjust_learning_rate(optimizer, iter, lr):
     for param_group in optimizer.param_groups:
         if cfg.TRAIN.IF_POLY_POLICY and iter != 0:
             s = math.pow((1 - iter / cfg.TRAIN.MAX_ITERS), cfg.TRAIN.POWER)
-            t = int(param_group['lr'] / lr) # t = 1 or 10
-            assert (t == 1 or t == 10)
+            t = round(param_group['lr'] / lr) # t = 1 or 10
+            # assert (t == 1 or t == 10)
+            if not(t == 1 or t == 10):
+                print("\n\n Not 1 or 10 when iter = %d, t = %f \n\n" % (iter, param_group['lr'] / lr))
             param_group['lr'] = t * cfg.TRAIN.LEARNING_RATE * s
-            return cfg.TRAIN.LEARNING_RATE * s
         elif iter % cfg.TRAIN.LR_DECAY_ITERS == 0 and iter != 0:
             param_group['lr'] = 0.1 * param_group['lr']
-            return 0.1 * lr
+
+    if cfg.TRAIN.IF_POLY_POLICY:
+        return cfg.TRAIN.LEARNING_RATE * s
+    else:
+        return 0.1 * lr
 
 
 

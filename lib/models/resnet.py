@@ -89,6 +89,20 @@ class Bottleneck(nn.Module):
 
         return out
 
+class Classifier_Module(nn.Module):
+    def __init__(self, dilation_series, padding_series, num_classes):
+        super(Classifier_Module, self).__init__()
+        self.conv2d_list = nn.ModuleList()
+        for dilation, padding in zip(dilation_series, padding_series):
+            self.conv2d_list.append(
+                nn.Conv2d(2048, num_classes, kernel_size=3, stride=1, padding=padding, dilation=dilation, bias=True))
+
+    def forward(self, x):
+        out = self.conv2d_list[0](x)
+        for i in range(len(self.conv2d_list) - 1):
+            out += self.conv2d_list[i + 1](x)
+        return out
+
 class ResNet(nn.Module):
     """
     Related code could be found in torchvision
@@ -107,6 +121,7 @@ class ResNet(nn.Module):
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
         self.layer3 = self._make_layer(block, 256, layers[2], stride=1, dilation=2)
         self.layer4 = self._make_layer(block, 512, layers[3], stride=1, dilation=4)
+        self.layer5 = self._make_pred_layer(Classifier_Module, [6, 12, 18, 24], [6, 12, 18, 24], num_classes)
 
 
         for m in self.modules():
@@ -133,6 +148,9 @@ class ResNet(nn.Module):
 
         return nn.Sequential(*layers)
 
+    def _make_pred_layer(self, block, dilation_series, padding_series, NoLabels):
+        return block(dilation_series, padding_series, NoLabels)
+
     def forward(self, x):
         x = self.conv1(x)
         x = self.bn1(x)
@@ -142,6 +160,7 @@ class ResNet(nn.Module):
         x = self.layer2(x)
         x = self.layer3(x)
         x = self.layer4(x)
+        x = self.layer5(x)
 
         return x
 

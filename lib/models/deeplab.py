@@ -8,74 +8,51 @@ from utils.config import cfg
 from collections import OrderedDict
 
 
-class Classifier(nn.Module):
-    def __init__(self, dilation_series, padding_series, num_classes):
-        super(Classifier, self).__init__()
-        self.conv2d_list = nn.ModuleList()
-        for dilation, padding in zip(dilation_series, padding_series):
-            self.conv2d_list.append(
-                nn.Conv2d(2048, num_classes, kernel_size=3, stride=1, padding=padding, dilation=dilation, bias=True))
-
-    def forward(self, x):
-        out = self.conv2d_list[0](x)
-        for i in range(len(self.conv2d_list) - 1):
-            out += self.conv2d_list[i + 1](x)
-        return out
-
 class DeepLab(nn.Module):
     """"Deeplab for semantic segmentation """
-    def __init__(self, num_classes, pretrained):
+    def __init__(self, num_classes):
         super(DeepLab, self).__init__()
         self.num_classes = num_classes
-        self.pretrained = pretrained
         self.pretrained_model = cfg.TRAIN.PRETRAINED_MODEL
 
     def _init_module(self):
-        resnet = resnet101()
-
-        if self.pretrained == True:
-            print("Loading pretrained weights from %s" % (self.pretrained_model))
-            state_dict = torch.load(self.pretrained_model)
-            temp = OrderedDict()
-            for k, v in state_dict.items():
-                new_key = k[6:]
-                temp[new_key] = v
-            resnet.load_state_dict({k: v for k, v in temp.items() if k in resnet.state_dict()})
-
-        # Build base feature extractor
-        self.ResNet_base = nn.Sequential(resnet.conv1, resnet.bn1, resnet.relu, resnet.maxpool,
-                                         resnet.layer1, resnet.layer2, resnet.layer3, resnet.layer4)
-        self.Pred_layer = Classifier([6, 12, 18, 24], [6, 12, 18, 24], self.num_classes)
+        # Define the network
+        self.Scale = ResNet(Bottleneck, [3, 4, 23, 3], num_classes=self.num_classes)
 
         # Fix BatchNorm
-        # No BN in pred_layer
         def set_bn_fix(m):
             classname = m.__class__.__name__
             if classname.find('BatchNorm') != -1:
                 for p in m.parameters(): p.requires_grad = False
-        self.ResNet_base.apply(set_bn_fix)
+        self.Scale.apply(set_bn_fix)
 
         # Fix blocks
-        # for p in self.ResNet_base[i].parameters(): p.requires_grad = False
 
     def forward(self, input, input_75, input_50):
         input_size = input.size()
         h, w = input.size()[2:]
 
         out = []
-        x = self.ResNet_base(input)
-        x = self.Pred_layer(x)
+        x = self.Scale(input)
         out.append(x)
         interp = nn.UpsamplingBilinear2d(size=(x.size()[2], x.size()[3]))
         fuse = x
 
-        x = self.ResNet_base(input_75)
-        x = self.Pred_layer(x)
-        out.append(x)
+        # interp1 = nn.UpsamplingBilinear2d(size=(int(h*0.75)+1, int(w*0.75)+1))
+        # interp2 = nn.UpsamplingBilinear2d(size=(int(h*0.5) +1, int(w*0.5) +1))
+        # x = input
+        # x2 = interp1(x)
+        # x3 = interp2(x)
+        # out.append(interp(self.Scale(x2)))
+        # out.append(self.Scale(x3))
+        #
+        # temp1 = torch.max(out[0], out[1])
+        # out.append(torch.max(temp1, interp(out[2])))
+        x = self.Scale(input_75)
+        out.append(interp(x))
         fuse = torch.max(fuse, interp(x))
 
-        x = self.ResNet_base(input_50)
-        x = self.Pred_layer(x)
+        x = self.Scale(input_50)
         out.append(x)
         out.append(torch.max(fuse, interp(x)))
 
@@ -93,7 +70,7 @@ class DeepLab(nn.Module):
                 m.weight.data.normal_(mean, stddev)
                 m.bias.data.zero_()
 
-        for m in self.Pred_layer.conv2d_list:
+        for m in self.Scale.layer5.conv2d_list:
             normal_init(m, 0, 0.01)
 
     def create_architecture(self):

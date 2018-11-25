@@ -53,7 +53,7 @@ def vis(pred, num_classes):
             index = pred[i, j]
             assert index <= num_classes
             output[i, j] = label_colours[index]
-    cv2.imwrite("result1.jpg", output)
+    cv2.imwrite("result.jpg", output)
     cv2.imshow('Semantic Segmentation Result', output)
     cv2.waitKey(0)
 
@@ -79,10 +79,11 @@ if __name__ == "__main__":
     args = parse_args()
 
     num_classes = 21
-    net = DeepLab(num_classes, pretrained=False)
+    net = DeepLab(num_classes)
     net.create_architecture()
     checkpoint = torch.load(args.model)
     net.load_state_dict(checkpoint['model'])
+    # net.load_state_dict(checkpoint) # caffe
     if args.gpu: net = net.cuda()
     net.float()
     net.eval()

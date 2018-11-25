@@ -37,14 +37,14 @@ def compute_iou(label, pred, num_classes):
     pred = pred.flatten()
 
     k = (label >= 0) & (label < num_classes)
-    return np.bincount((num_classes * label[k].astype(int) + pred[k]).astype(int), minlength=num_classes**2).reshape(num_classes, num_classes)
+    return np.bincount((num_classes * label[k] + pred[k]).astype(int), minlength=num_classes**2).reshape(num_classes, num_classes)
 
 def eval(datalodaer, net, hist):
     with torch.no_grad():
         for i, (image, label) in enumerate(datalodaer):
             # image, label = data_iter.next()
             image = image.numpy()[0]
-            squares = np.zeros((600, 600, 3))
+            squares = np.zeros((513, 513, 3))
             squares[:image.shape[0], :image.shape[1], :] = image
             squares = squares[np.newaxis, :, :, :]
             img, img_75, img_50 = random_scale_and_msc(squares, label.numpy(), cfg.TRAIN.FIXED_SCALES, cfg.TRAIN.SCALES, False)
@@ -60,7 +60,7 @@ def eval(datalodaer, net, hist):
             pred = pred.transpose(1, 2, 0)
             pred = np.argmax(pred, axis=2)
 
-            hist += compute_iou(pred, label.numpy()[0, :, :], num_classes)
+            hist += compute_iou(label.numpy()[0, :, :], pred, num_classes)
     miou = np.diag(hist) / (hist.sum(1) + hist.sum(0) - np.diag(hist))
     print("Mean iou = %.2f%%" % (np.sum(miou) * 100 / len(miou)))
 
@@ -83,14 +83,14 @@ if __name__ == "__main__":
 
     valloader = DataLoader(dataset=valset, batch_size=1, shuffle=False)
     # data_iter = iter(valloader)
-    net = DeepLab(num_classes, pretrained=False)
+    net = DeepLab(num_classes)
     net.create_architecture()
 
 
     checkpoint = torch.load(args.model)
+    # net.load_state_dict(checkpoint)
     net.load_state_dict(checkpoint['model'])
     if cfg.CUDA: net = net.cuda()
-    net.float()
     net.eval()
     hist = np.zeros((num_classes, num_classes))
     eval(valloader, net, hist)

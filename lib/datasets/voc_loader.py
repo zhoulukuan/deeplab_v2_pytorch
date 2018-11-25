@@ -49,7 +49,7 @@ class VOCDataset(Dataset):
         image_path, label_path = self.data_list[item]
         img = cv2.imread(self.data_path + image_path).astype(float)
         label = cv2.imread(self.data_path + label_path)[:, :, 0]
-        label[label == 255] = 0
+        # label[label == 255] = 0
 
         return img, label
 

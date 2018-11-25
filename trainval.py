@@ -49,9 +49,6 @@ def parse_args():
     parser.add_argument('--use_tfboard', dest='use_tfboard',
                       help='if use tensorboardX', default=True,
                       type=bool)
-    parser.add_argument('--eval', dest='eval',
-                        help='if evaluate model', default=True,
-                        type=bool)
     parser.add_argument('--set', dest='set_cfgs',
                         help='set config keys', default=None,
                         nargs=argparse.REMAINDER)
@@ -83,24 +80,17 @@ if __name__ == "__main__":
         valset = VOCDataset(osp.join(cfg.DATA_DIR, 'val.txt'), cfg, num_classes, 'val')
 
     trainloader = DataLoader(dataset=dataset, batch_size=cfg.TRAIN.BATCH_SIZE,
-                             shuffle=True)
+                             shuffle=False)
     valloader = DataLoader(dataset=valset, batch_size=1, shuffle=False)
 
-    net = DeepLab(num_classes, pretrained=True)
+    net = DeepLab(num_classes)
     net.create_architecture()
 
     # Load pre-trained model
-    # if cfg.TRAIN.PRETRAINED_MODEL:
-    #     print("Loading pretrained weights from %s" % (cfg.TRAIN.PRETRAINED_MODEL))
-    #     state_dict = torch.load(cfg.TRAIN.PRETRAINED_MODEL)
-    #     temp = OrderedDict()
-    #     for k, v in state_dict.items():
-    #         if 'conv2d_list' in k:
-    #             new_key = 'Pred_layer' + k[13:]
-    #             temp[new_key] = v
-    #         else:
-    #             new_key = 'ResNet_base' + k[6:]
-    #     net.load_state_dict({k: v for k, v in temp.items() if k in net.state_dict()})
+    if cfg.TRAIN.PRETRAINED_MODEL:
+        print("Loading pretrained weights from %s" % (cfg.TRAIN.PRETRAINED_MODEL))
+        state_dict = torch.load(cfg.TRAIN.PRETRAINED_MODEL)
+        net.load_state_dict(state_dict)
 
     lr = cfg.TRAIN.LEARNING_RATE
     weight_decay = cfg.TRAIN.WEIGHT_DECAY
@@ -112,12 +102,10 @@ if __name__ == "__main__":
     params = []
     for key, value in dict(net.named_parameters()).items():
         if value.requires_grad:
-            if 'ResNet_base' in key:
-                params += [{'params': [value], 'lr': lr}]
-            elif 'Pred_layer' in key:
+            if 'conv2d_list' in key:
                 params += [{'params': [value], 'lr': 10 * lr}]
             else:
-                raise Exception('Nonexistent layers! ')
+                params += [{'params': [value], 'lr': lr}]
 
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(params, momentum=momentum, weight_decay=weight_decay)
