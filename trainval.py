@@ -182,19 +182,18 @@ if __name__ == "__main__":
                 }
                 logger.add_scalars("loss_lr", info, iter)
 
-        if iter % args.checkpoint_interval == 0 and iter > 10000:
+        if iter % args.checkpoint_interval == 0 and iter > 100000:
             save_path = osp.join(args.save_dir, 'VOC12_'+str(iter)+'.pth')
-            torch.save({'optimizer': optimizer.state_dict(),
-                        'model': net.state_dict(),
+            torch.save({'model': net.state_dict(),
                         'iter': iter,
                         'lr': lr
                         }, save_path)
+            # torch.save({'model': net.state_dict(),
+            #             'iter': iter,
+            #             'lr': lr,
+            #             'optimizer': optimizer.state_dict()
+            #             }, save_path)
             print("save model: {}".format(save_path))
-            # if args.eval:
-            #     hist = np.zeros((num_classes, num_classes))
-            #     eval(val_loader, net, hist)
-
-
 
 
     if args.use_tfboard:

@@ -3,15 +3,17 @@ import os.path as osp
 import pprint
 import numpy as np
 
+import _init_path
 import torch
 from torch.utils.data import DataLoader
 from torch import nn
 
 from datasets.voc_loader import VOCDataset
 from utils.config import cfg, cfg_from_file
-from utils.tools import random_scale_and_msc, msc_label
+from utils.tools import random_scale_and_msc, msc_label, dense_crf
 from models.deeplab import DeepLab
 from collections import OrderedDict
+import tqdm
 
 
 
@@ -27,7 +29,7 @@ def parse_args():
                     help='vgg16, res101',
                     default='res101', type=str)
     parser.add_argument('--model', dest='model',
-                      help='pretrained model', default="/VOC12_scenes_16000.pth",
+                      help='pretrained model', default="models/7310.pth",
                       type=str)
     args = parser.parse_args()
     return args
@@ -54,13 +56,23 @@ def eval(datalodaer, net, hist):
                 img, img_75, img_50 = img.float(), img_75.float(), img_50.float()
 
             out = net(img, img_75, img_50)[-1]
+            mean = np.array([104.00698793, 116.66876762, 122.67891434]).reshape(1, 1, 3)
             interp = nn.UpsamplingBilinear2d(size=(img.size()[2], img.size()[3]))
-            pred = interp(out).cpu().data[0].numpy()
-            pred = pred[:, :image.shape[0], :image.shape[1]]
-            pred = pred.transpose(1, 2, 0)
-            pred = np.argmax(pred, axis=2)
+            if cfg.TEST.IF_CRF:
+                softmax = nn.Softmax2d()
+                pred = softmax(interp(out)).cpu().numpy()[0]
+                pred = pred[:, :image.shape[0], :image.shape[1]]
+                origin_img = image + mean
+                pred_crf = dense_crf(probs=pred, n_classes=num_classes, img=origin_img.astype('uint8'))
+                pred_crf = np.argmax(pred_crf, axis=2)
 
-            hist += compute_iou(label.numpy()[0, :, :], pred, num_classes)
+                hist += compute_iou(label.numpy()[0, :, :], pred_crf, num_classes)
+            else:
+                pred = interp(out).cpu().numpy()[0]
+                pred = pred[:, :image.shape[0], :image.shape[1]]
+                pred = np.argmax(pred.transpose(1, 2, 0), axis=2)
+
+                hist += compute_iou(label.numpy()[0, :, :], pred, num_classes)
     miou = np.diag(hist) / (hist.sum(1) + hist.sum(0) - np.diag(hist))
     print("Mean iou = %.2f%%" % (np.sum(miou) * 100 / len(miou)))
 
@@ -88,21 +100,21 @@ if __name__ == "__main__":
     if cfg.CUDA: net = net.cuda()
     net.eval()
 
-    for i in range(25, 31):
-        # model = args.model
-        model = 'dmodels/VOC12_%d000.pth' % int(i)
-        checkpoint = torch.load(model)
-        # net.load_state_dict(checkpoint)
-        net.load_state_dict(checkpoint['model'])
-        hist = np.zeros((num_classes, num_classes))
-        print("Model Path%s: " % model)
-        eval(valloader, net, hist)
+    # for i in range(30, 41):
+    #     # model = args.model
+    #     model = 'dmodels/VOC12_%d000.pth' % int(i)
+    #     checkpoint = torch.load(model)
+    #     # net.load_state_dict(checkpoint)
+    #     net.load_state_dict(checkpoint['model'])
+    #     hist = np.zeros((num_classes, num_classes))
+    #     print("Model Path%s: " % model)
+    #     eval(valloader, net, hist)
 
-    # model = args.model
-    # # model = 'dmodels/VOC12_%d000.pth' % int(i)
-    # checkpoint = torch.load(model)
+    model = args.model
+    # model = 'dmodels/VOC12_%d000.pth' % int(i)
+    checkpoint = torch.load(model)
     # net.load_state_dict(checkpoint)
-    # # net.load_state_dict(checkpoint['model'])
-    # hist = np.zeros((num_classes, num_classes))
-    # print("Model Path%s: " % model)
-    # eval(valloader, net, hist)
+    net.load_state_dict(checkpoint['model'])
+    hist = np.zeros((num_classes, num_classes))
+    print("Model Path: %s " % model)
+    eval(valloader, net, hist)

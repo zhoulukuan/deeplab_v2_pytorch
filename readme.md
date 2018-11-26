@@ -1,5 +1,5 @@
 # Deeplab v2 with pytorch
-It is an reimplement of [deeplab v2](https://arxiv.org/abs/1606.00915) with pytorch when I learn pytorch.  I get a validation performance of XX.XX% IoU( vs 75.54% in the paper) on the PASCAL VOC2012.
+It is an reimplement of [deeplab v2](https://arxiv.org/abs/1606.00915) with pytorch when I learn pytorch.  I get a validation performance of 74.47% IoU(73.10% before DenseCRF) on the PASCAL VOC2012.
 
 ## Acknowledge
 During finishing this work, I have referenced a lot of gread work, including:
@@ -8,6 +8,7 @@ During finishing this work, I have referenced a lot of gread work, including:
 - [jwyang/faster-rcnn.pytorch](https://github.com/jwyang/faster-rcnn.pytorch)
 
 Among them, isht7's work is the main reference source and I learn from his code about how to define the net and compute the mIoU, etc. In fact, his work is very complete except for denseCRF. If you use python 2, I recommend you to his github. My work supports **python 3** and **Pytorch 0.4.0**.
+DrSleep's work gives a good example about how to use pydensecrf as well as visulization.
 
 ## Installing and Preparing for data/model
 step 0: **Download**
@@ -73,19 +74,21 @@ Testing your trained model could be done by running:
 ```
 python test.py --model=path/to/your/model
 ```
-You can see the final result on PASCAL VOC2012 after a while.
+You can see the final result on PASCAL VOC2012 after a while. If you want to use denseCRF, change TEST.IF_CRF in `config.py`. However, it may cost you about 40-50 min because denseCRF is 
 
 ### TensorboardX
 Monitor your training process with tensorboardX. Run:
 ```
 tensorboard --logdir=$DEEPLAB_V2_PYTORCH/logs/loss_lr/lr --port=7001
 ```
-Then open your firefox or chrome, and visit localhost:7001. You can found similar results as follow:
+Then open your firefox or chrome, and visit localhost:7001. 
 
+## Result
+This work including many tricks in paper, including: multi-scale inputs, models pretrained on MS-COCO for initization, data augmentation and ASPP-L. However, I only achieve 74.47% mIoU(73.31% before denseCRF, with 2e-5 learning rate and 40000 iters). And caffe model converted by isht7 can achieve 75.54% before DenseCRF. Best result in paper is 77.69% with denseCRF. How to achieve such a good performance is left as a future work.
 
 ## Todo
-[ ] Reproduce the results in paper(75.54%)
+[x] DenseCRF
 
-[ ] DenseCRF
+[ ] Reproduce the results in paper(75.54%)
 
 [ ] Support Pytorch 0.4.1+

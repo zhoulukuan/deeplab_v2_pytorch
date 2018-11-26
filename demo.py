@@ -8,9 +8,10 @@ import torch
 from torch.utils.data import DataLoader
 from torch import nn
 
+import _init_path
 from datasets.voc_loader import VOCDataset
 from utils.config import cfg, cfg_from_file
-from utils.tools import random_scale_and_msc
+from utils.tools import random_scale_and_msc, dense_crf
 from models.deeplab import DeepLab
 
 # colour map
@@ -38,7 +39,7 @@ def parse_args():
                     help='vgg16, res101',
                     default='res101', type=str)
     parser.add_argument('--model', dest='model',
-                      help='pretrained model', default="models/VOC12_20000.pth",
+                      help='pretrained model', default="models/7189.pth",
                       type=str)
     parser.add_argument('--gpu', dest='gpu',
                         help='if use gpu when test single image', default=False,
@@ -59,10 +60,13 @@ def vis(pred, num_classes):
     cv2.waitKey(0)
 
 
-def test_single_image(image, net, args):
+def test_single_image(origin_img, net, args, num_classes):
+    mean = np.array([104.00698793, 116.66876762, 122.67891434]).reshape(1, 1, 3)
+    img = origin_img - mean
+    img = img[np.newaxis, :, :, :]
     with torch.no_grad():
         # image, label = data_iter.next()
-        img, img_75, img_50 = random_scale_and_msc(image, 0, cfg.TRAIN.FIXED_SCALES, cfg.TRAIN.SCALES, False)
+        img, img_75, img_50 = random_scale_and_msc(img, 0, cfg.TRAIN.FIXED_SCALES, cfg.TRAIN.SCALES, False)
         if args.gpu:
             img, img_75, img_50 = img.cuda().float(), img_75.cuda().float(), img_50.cuda().float()
         else:
@@ -70,10 +74,11 @@ def test_single_image(image, net, args):
 
         out = net(img, img_75, img_50)[-1]
         interp = nn.UpsamplingBilinear2d(size=(img.size()[2], img.size()[3]))
-        pred = interp(out).cpu().data[0].numpy()
-        pred = pred.transpose(1, 2, 0)
-        pred = np.argmax(pred, axis=2)
-        return pred
+        softmax = nn.Softmax2d()
+        pred = softmax(interp(out)).cpu().numpy()[0]
+        pred_crf = dense_crf(probs=pred, n_classes=num_classes, img=origin_img.astype('uint8'))
+        pred_crf = np.argmax(pred_crf, axis=2)
+        return pred_crf
 
 
 if __name__ == "__main__":
@@ -90,9 +95,6 @@ if __name__ == "__main__":
     net.eval()
 
     img = cv2.imread(args.img).astype(float)
-    mean = np.array([104.00698793, 116.66876762, 122.67891434]).reshape(1, 1, 3)
-    img = img - mean
-    img = img[np.newaxis, :, :, :]
 
-    pred = test_single_image(img, net, args)
+    pred = test_single_image(img, net, args, num_classes)
     vis(pred, num_classes)
