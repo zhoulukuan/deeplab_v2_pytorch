@@ -16,6 +16,7 @@ step 0: **Download**
 git clone https://github.com/zhoulukuan/deeplab_v2_pytorch
 ```
 step 1: **Install pytorch 0.4.0 and torchvision**
+
 I only test my work on pytorch 0.4.0 and ubuntu. Follow the step in [pytorch official website](https://pytorch.org/get-started/previous-versions/) according to your CUDA version. GPU is not necessary, but your  will be very slow without GPU.
 
 step 2: **Install Python Package**
