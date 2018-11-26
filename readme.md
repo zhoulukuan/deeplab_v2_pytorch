@@ -75,7 +75,7 @@ Testing your trained model could be done by running:
 ```
 python test.py --model=path/to/your/model
 ```
-You can see the final result on PASCAL VOC2012 after a while. If you want to use denseCRF, change TEST.IF_CRF in `config.py`. However, it may cost you about 40-50 min because denseCRF is 
+You can see the final result on PASCAL VOC2012 after a while. If you want to use denseCRF, change TEST.IF_CRF in `config.py`. However, it may cost you about 40-50 min because denseCRF is time-consuming.
 
 ### TensorboardX
 Monitor your training process with tensorboardX. Run:
