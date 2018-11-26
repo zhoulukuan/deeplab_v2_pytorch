@@ -27,7 +27,7 @@ def parse_args():
                     help='vgg16, res101',
                     default='res101', type=str)
     parser.add_argument('--model', dest='model',
-                      help='pretrained model', default="models/VOC12_20000.pth",
+                      help='pretrained model', default="/VOC12_scenes_16000.pth",
                       type=str)
     args = parser.parse_args()
     return args
@@ -85,12 +85,24 @@ if __name__ == "__main__":
     # data_iter = iter(valloader)
     net = DeepLab(num_classes)
     net.create_architecture()
-
-
-    checkpoint = torch.load(args.model)
-    # net.load_state_dict(checkpoint)
-    net.load_state_dict(checkpoint['model'])
     if cfg.CUDA: net = net.cuda()
     net.eval()
-    hist = np.zeros((num_classes, num_classes))
-    eval(valloader, net, hist)
+
+    for i in range(25, 31):
+        # model = args.model
+        model = 'dmodels/VOC12_%d000.pth' % int(i)
+        checkpoint = torch.load(model)
+        # net.load_state_dict(checkpoint)
+        net.load_state_dict(checkpoint['model'])
+        hist = np.zeros((num_classes, num_classes))
+        print("Model Path%s: " % model)
+        eval(valloader, net, hist)
+
+    # model = args.model
+    # # model = 'dmodels/VOC12_%d000.pth' % int(i)
+    # checkpoint = torch.load(model)
+    # net.load_state_dict(checkpoint)
+    # # net.load_state_dict(checkpoint['model'])
+    # hist = np.zeros((num_classes, num_classes))
+    # print("Model Path%s: " % model)
+    # eval(valloader, net, hist)

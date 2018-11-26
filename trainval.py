@@ -36,7 +36,7 @@ def parse_args():
                       default=20, type=int)
     parser.add_argument('--checkpoint_interval', dest='checkpoint_interval',
                       help='number of save model and evaluate it',
-                      default=4000, type=int)
+                      default=1000, type=int)
     parser.add_argument('--save_dir', dest='save_dir',
                       help='directory to save models', default="models",
                       type=str)
@@ -80,7 +80,7 @@ if __name__ == "__main__":
         valset = VOCDataset(osp.join(cfg.DATA_DIR, 'val.txt'), cfg, num_classes, 'val')
 
     trainloader = DataLoader(dataset=dataset, batch_size=cfg.TRAIN.BATCH_SIZE,
-                             shuffle=False)
+                             shuffle=True)
     valloader = DataLoader(dataset=valset, batch_size=1, shuffle=False)
 
     net = DeepLab(num_classes)
@@ -103,12 +103,19 @@ if __name__ == "__main__":
     for key, value in dict(net.named_parameters()).items():
         if value.requires_grad:
             if 'conv2d_list' in key:
-                params += [{'params': [value], 'lr': 10 * lr}]
+                if 'bias' in key:
+                    params += [{'params': [value], 'lr': 10 * lr, 'weight_decay': 0}]
+                else:
+                    params += [{'params': [value], 'lr': 10 * lr, 'weight_decay': weight_decay}]
             else:
-                params += [{'params': [value], 'lr': lr}]
+                if 'bias' in key:
+                    params += [{'params': [value], 'lr': lr, 'weight_decay': 0}]
+                else:
+                    params += [{'params': [value], 'lr': lr, 'weight_decay': weight_decay}]
+
+    optimizer = torch.optim.SGD(params, momentum=momentum)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(params, momentum=momentum, weight_decay=weight_decay)
     if cfg.CUDA: net.cuda()
     net.float()
     net.eval()
@@ -120,8 +127,9 @@ if __name__ == "__main__":
         load_model = sorted(os.listdir(args.save_dir))[-1]
         checkpoint = torch.load(osp.join(args.save_dir, load_model))
         lr = checkpoint['lr']
-        net.load_state_dict(checkpoint['model'])
         optimizer.load_state_dict(checkpoint['optimizer'])
+        net.load_state_dict(checkpoint['model'])
+        optimizer = torch.optim.SGD(params, momentum=momentum)
         star_iter = checkpoint['iter']
         print("load model for %s !" % load_model)
 
@@ -174,7 +182,7 @@ if __name__ == "__main__":
                 }
                 logger.add_scalars("loss_lr", info, iter)
 
-        if iter % args.checkpoint_interval == 0 or iter == cfg.TRAIN.MAX_ITERS:
+        if iter % args.checkpoint_interval == 0 and iter > 10000:
             save_path = osp.join(args.save_dir, 'VOC12_'+str(iter)+'.pth')
             torch.save({'optimizer': optimizer.state_dict(),
                         'model': net.state_dict(),

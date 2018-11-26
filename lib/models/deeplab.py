@@ -38,16 +38,6 @@ class DeepLab(nn.Module):
         interp = nn.UpsamplingBilinear2d(size=(x.size()[2], x.size()[3]))
         fuse = x
 
-        # interp1 = nn.UpsamplingBilinear2d(size=(int(h*0.75)+1, int(w*0.75)+1))
-        # interp2 = nn.UpsamplingBilinear2d(size=(int(h*0.5) +1, int(w*0.5) +1))
-        # x = input
-        # x2 = interp1(x)
-        # x3 = interp2(x)
-        # out.append(interp(self.Scale(x2)))
-        # out.append(self.Scale(x3))
-        #
-        # temp1 = torch.max(out[0], out[1])
-        # out.append(torch.max(temp1, interp(out[2])))
         x = self.Scale(input_75)
         out.append(interp(x))
         fuse = torch.max(fuse, interp(x))

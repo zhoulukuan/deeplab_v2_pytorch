@@ -106,8 +106,7 @@ class Classifier_Module(nn.Module):
 class ResNet(nn.Module):
     """
     Related code could be found in torchvision
-    Change code in self.__make_layer/self.__init__/Class BottleNeck to change stride and dilation in layer3 and layer4
-    Remove layers not used in deeplab
+    Refer code in https://github.com/isht7/pytorch-deeplab-resnet
     """
     def __init__(self, block, layers, num_classes=1000):
         self.inplanes = 64

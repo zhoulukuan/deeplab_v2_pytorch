@@ -14,6 +14,7 @@ from utils.tools import random_scale_and_msc
 from models.deeplab import DeepLab
 
 # colour map
+# use code in https://github.com/DrSleep/tensorflow-deeplab-resnet/
 label_colours = [(0,0,0)
                 # 0=background
                 ,(128,0,0),(0,128,0),(128,128,0),(0,0,128),(128,0,128)
