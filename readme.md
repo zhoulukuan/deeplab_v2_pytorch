@@ -85,7 +85,7 @@ tensorboard --logdir=$DEEPLAB_V2_PYTORCH/logs/loss_lr/lr --port=7001
 Then open your firefox or chrome, and visit localhost:7001. 
 
 ## Result
-This work including many tricks in paper, including: multi-scale inputs, models pretrained on MS-COCO for initization, data augmentation and ASPP-L. However, I only achieve 74.47% mIoU(73.31% before denseCRF, with 2e-5 learning rate and 40000 iters). And caffe model converted by isht7 can achieve 75.54% before DenseCRF. Best result in paper is 77.69% with denseCRF. How to achieve such a good performance is left as a future work.
+This work including many tricks in paper, including: multi-scale inputs, models pretrained on MS-COCO for initization, data augmentation and ASPP-L. However, I only achieve 74.47% mIoU(73.31% before denseCRF, with 2e-5 learning rate and 40000 iters). And caffe model which is released by author and converted by isht7 can achieve 75.54% before DenseCRF. Best result in paper is 77.69% with denseCRF. How to achieve such a good performance is left as a future work.
 
 ## Todo
 [x] DenseCRF
